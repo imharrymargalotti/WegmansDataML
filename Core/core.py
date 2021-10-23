@@ -1,6 +1,8 @@
 # pip install urllib
 # pip install m3u8
 # pip install streamlink
+import os
+import threading
 from datetime import datetime, timedelta, timezone
 import urllib
 import m3u8
@@ -105,9 +107,35 @@ def openCVProcessing(saved_video_file):
     capture.release()
     cv2.destroyAllWindows()
 
+def purge_file(filename):
+    try:
+        os.remove(filename)
+    except:
+        print("file: ", filename, " does not exist yet")
 
-tempFile = "streamFiles/temp.ts"
-videoURL = "https://m.youtube.com/watch?v=jiL2rku7M1A"
 
-dl_stream(videoURL, tempFile, 3)
-openCVProcessing(tempFile)
+def make_stream_file(videoURL, tempFile, chunks):
+    get_stream(videoURL)
+    dl_stream(videoURL, tempFile, chunks)
+
+
+def play_stream(tempFile):
+    openCVProcessing(tempFile)
+
+
+def main():
+    mainThreadFile = "streamFiles/tempA.ts"
+    secondThreadFile = "streamFiles/tempB.ts"
+    videoURL = "https://m.youtube.com/watch?v=jiL2rku7M1A"
+    chunks = 3
+    purge_file(mainThreadFile) ##purge to start so we jump to live
+    purge_file(secondThreadFile)
+    th = threading.Thread(target=make_stream_file(videoURL, secondThreadFile, chunks))  ##kickOff b thred to get content
+    while(True):
+        make_stream_file(videoURL, mainThreadFile, chunks) ##main thread gets content
+        play_stream(mainThreadFile)
+        th.start()
+        purge_file(mainThreadFile)
+        play_stream(secondThreadFile)
+        purge_file(secondThreadFile)
+main()
